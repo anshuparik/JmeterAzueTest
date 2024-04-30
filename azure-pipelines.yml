@@ -6,12 +6,24 @@
 trigger:
 - main
 
-execution:
-- executor: jmeter
-  concurrency: 10
-  hold-for: 1m
-  ramp-up: 10s
-  scenario: sample test
-scenarios:
-  sample test:
-    script: My_Azure_Test.jmx
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: DownloadSecureFile@1
+  displayName: 'Download JMeter script'
+  inputs:
+    secureFile: 'My_Azure_Test.jmx'
+
+- script: |
+    echo "Executing JMeter test..."
+    jmeter -n -t $(Agent.TempDirectory)/My_Azure_Test.jmx -l $(Build.ArtifactStagingDirectory)/testresults.jtl
+  displayName: 'Run JMeter tests'
+
+- task: PublishTestResults@2
+  displayName: 'Publish test results'
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/testresults.jtl'
+    searchFolder: '$(Build.ArtifactStagingDirectory)'
